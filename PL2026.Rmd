@@ -23,7 +23,7 @@ css: styles.css
 
 <div class="Análisis  Descriptivo de Ante-Proyecto 
 de Ley 2026 MOP">
-  <div style="font-size: 2.5em; font-weight: bold; margin-bottom: 100px; text-align: center;">Análisis Estadístico de Ante-Proyecto <br> de Ley 2026 MOP <br> Edición 2025 </div>
+  <div style="font-size: 2.5em; font-weight: bold; margin-bottom: 100px; text-align: center;">Informe de Estadísticas de Ante-Proyecto <br> de Ley 2026 MOP <br> Edición 2025 </div>
   <div style="text-align: center;">
   <img src="mop.jpeg" alt="" width="30%">
 </div>
@@ -45,7 +45,7 @@ knitr::opts_chunk$set(fig.cap = "Figura ")
 ```
 
 ```{r, include=FALSE}
-library(knitr) ; library(kableExtra); library(ggplot2); library(tinytex); library(dplyr); library(scales); library(readxl); library(paletteer); library(viridis); library(gridExtra); library(ggrepel); library(htmltools); library(tidyr); library(rio)
+library(knitr) ; library(kableExtra); library(ggplot2); library(tinytex); library(dplyr); library(scales); library(readxl); library(paletteer); library(viridis); library(gridExtra); library(ggrepel); library(htmltools); library(tidyr); library(rio); library(stringr)
 Sys.setlocale("LC_ALL", "es_ES.UTF-8") 
 ```
 
@@ -126,23 +126,14 @@ BASE <- BASE %>%
 
 
 ## Aquí, agrupamos por categoría de programa dipres para ver el desglose
-# TENGO QUE HACER NUEVA CLASEFICACION PARA LOS PROGRAMAS DIPRES
 BASE <- BASE %>%  mutate(AGUA_DIPRES = case_when(`Programa dipres` == "GRANDES OBRAS DE RIEGO" ~ "RIEGO",
                                                  `Programa dipres` == "CONSERVACION DE OBRAS DE RIEGO" ~ "RIEGO",
                                                  `Programa dipres` ==  "OBRAS MEDIANAS DE RIEGO" ~ "RIEGO",
-                                                 `Programa dipres` ==  "EXPLOTACION DE OBRAS DE RIEGO" ~ "RIEGO",
-                                                 `Programa dipres` ==  "OBRAS DE RIEGO" ~ "RIEGO",
-                                                 `Programa dipres` == "AGUA POTABLE RURAL DISPERSO" ~ "CONSUMO HUMANO",
-                                                 `Programa dipres` == "AGUA POTABLE RURAL SEMI CONCENTRADO" ~ "CONSUMO HUMANO",
-                                                 `Programa dipres` == "AGUA POTABLE RURAL CONCENTRADO" ~ "CONSUMO HUMANO",
-                                                 `Programa dipres` == "ESTUDIO BÁSICO" ~ "ESTUDIOS Y OTROS",
+                                                 `Programa dipres` == "AMPLIACION Y MEJORAMIENTO DE SERVICIOS EXISTENTES DE AGUA POTABLE RURAL" ~ "CONSUMO HUMANO",
+                                                 `Programa dipres` == "CONSERVACION" ~ "CONSUMO HUMANO",
+                                                 `Programa dipres` == "CONSTRUCCION SISTEMA SSR" ~ "CONSUMO HUMANO",
                                                  `Programa dipres` == "ESTUDIOS" ~ "ESTUDIOS Y OTROS",
-                                                 
-                                                 `Programa dipres` == "OTROS" ~ "ESTUDIOS Y OTROS",
-                                                 
-                                                 TRUE ~ "GESTIÓN"))
-
-
+                                                 TRUE ~ "ESTUDIOS Y OTROS"))
 
 
 # estas son las inversiones para cada región de acuerdo a la ley 2025
@@ -217,7 +208,7 @@ ggplot(tab1, aes(y = RegionAB, x = `Monto 2026`)) +
     title = "Inversión 2026 a nivel Regional e Interregional",
     x = "Inversión (miles de pesos)",  
     y = "",
-    caption =  "Figura 1: Inversión a nivel Regional e Interregional.\nFuente: Elaboración propia basada en datos del Departamento de Gestión Presupuestaria.\nNota: Sentido de la flecha (arriba/abajo) indica crecimiento o decrecimiento en comparación al presupuesto de la ley 2025 \ny entre paréntesis se indica el factor de crecimiento o decrecimiento."
+    caption =  "Figura 1: Inversión a nivel Regional e Interregional.\nFuente: Elaboración propia basada en datos del Departamento de Gestión Presupuestaria.\nNota: Sentido de la flecha (arriba/abajo) indica crecimiento o decrecimiento en comparación al presupuesto de la ley \n2025 y entre paréntesis se indica el factor de crecimiento o decrecimiento."
   ) +
    theme(
      panel.background = element_rect(fill = "white", color = NA), 
@@ -240,55 +231,91 @@ ggplot(tab1, aes(y = RegionAB, x = `Monto 2026`)) +
 ```{r, tab.cap=NULL}
 
 
-
+# --- 1) Tabla de población y pobreza ---
 tab_poblacion_nac <- PROYECCIONES_POBmulti %>%
   group_by(RegionAB) %>%
   summarise(
-    "Población 2024" = sum(`Población censada`), 
-    "Población 2025" = sum(`Suma de Poblacion 2025`), 
-   "Crec/Decrec relativo de Población 2024 al 2025" = format(
-  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 2), 
-  big.mark = ".", 
-  decimal.mark = ",", 
-  nsmall = 2
-),
-    "Pobreza Multidimensional" = scales::comma(
-  round(sum(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-)
+    `Población 2024` = sum(`Población censada`, na.rm = TRUE),
+    `Población 2025` = sum(`Suma de Poblacion 2025`, na.rm = TRUE),
+    `Crec/Decrec relativo de Población 2024 al 2025 (%)` = (first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100,
+    `% Pobreza Multidimensional` = mean(`% pobreza mult regional`, na.rm = TRUE) * 100
+  ) %>%
+  ungroup()
 
-  )
-
-
+# --- 2) Montos ---
 tab_monto_nac <- BASE %>%
-  select(RegionAB, `Monto 2026`) %>%
   group_by(RegionAB) %>%
-  summarise("Monto2026" = sum(`Monto 2026`))
+  summarise(Monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  ungroup()
 
-
-tab_resumen_nac <- left_join(tab_poblacion_nac,tab_monto_nac, by = "RegionAB")  %>% 
-  mutate(RegionAB = factor(RegionAB, levels = rev(orden_regiones))) %>% 
-arrange(RegionAB) %>% 
+# --- 3) Unir tablas ---
+tab_resumen_nac <- tab_poblacion_nac %>%
+  left_join(tab_monto_nac, by = "RegionAB") %>%
+  mutate(RegionAB = factor(RegionAB, levels = rev(orden_regiones))) %>%
+  arrange(RegionAB) %>%
   filter(RegionAB != "INTERREGIONAL")
 
+# --- 4) Vector con los números correctos de proyectos ---
+# IMPORTANTE: el orden debe coincidir con el de RegionAB en tab_resumen_nac
+proyectos_correctos <- c(84,
+108,
+105,
+127,
+146,
+154,
+178,
+130,
+126,
+112,
+204,
+275,
+174,
+229,
+121,
+109
+) 
+tab_resumen_nac <- tab_resumen_nac %>%
+  mutate(`Número de Proyectos` = proyectos_correctos)
 
+# --- 5) Selección de columnas y formateo ---
+tab_resumen_nac_formateada <- tab_resumen_nac %>%
+  select(
+    Región = RegionAB,
+    `Población 2024`,
+    `Población 2025`,
+    `Crec/Decrec relativo de Población 2024 al 2025 (%)`,
+    `% Pobreza Multidimensional`,
+    Inversión = Monto2026,
+    `Número de Proyectos`
+  ) %>%
+  mutate(
+    `Población 2024` = scales::comma(`Población 2024`, big.mark = ".", decimal.mark = ","),
+    `Población 2025` = scales::comma(`Población 2025`, big.mark = ".", decimal.mark = ","),
+    `Crec/Decrec relativo de Población 2024 al 2025 (%)` = format(round(`Crec/Decrec relativo de Población 2024 al 2025 (%)`, 2), nsmall = 2, decimal.mark = ","),
+    `% Pobreza Multidimensional` = format(round(`% Pobreza Multidimensional`, 1), nsmall = 1, decimal.mark = ","),
+    Inversión = scales::comma(Inversión, big.mark = ".", decimal.mark = ","),
+    `Número de Proyectos` = scales::comma(`Número de Proyectos`, big.mark = ".", decimal.mark = ",")
+  )
 
-
-tab_resumen_nac %>%
-  mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", decimal.mark = ","), 
-         `Población 2025` = scales::comma(`Población 2025`, big.mark = ".", decimal.mark = ","), 
-         Monto2026 = scales::comma(Monto2026, big.mark = ".", decimal.mark = ","),
-         `Pobreza Multidimensional`  = replace_na(`Pobreza Multidimensional`, "12.472")) %>%
-  kable("html", 
+# --- 6) Mostrar con kable ---
+tab_resumen_nac_formateada %>%
+  kable("html", escape = FALSE,
         col.names = c("Región", "Población 2024", "Población 2025 (*)", 
                       "Crec/Decrec relativo de Población 2024 al 2025 (%)", 
-                      "N° de personas en situación de pobreza multidimensional (**)", 
-                      "Inversión")) %>%
+                      "% Pobreza Multidimensional", 
+                      "Inversión",
+                      "Número de Proyectos")) %>%
   kable_styling(full_width = FALSE, 
-                bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>%
-footnote(general = "<span style='font-size: 12px;'>Tabla 1: Poblaciones en regiones de Chile. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los montos de inversión presentados no incluyen la participación de las regiones en proyectos de carácter interregional.</span>", 
-           general_title = "", 
-           escape = FALSE) 
+                bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  footnote(
+    general = "<span style='font-size: 12px;'>Tabla 1: Poblaciones en regiones de Chile. 
+Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. 
+(*) Población proyectada al 2025 según el INE. 
+(**) Indica el porcentaje de personas en situación de pobreza multidimensional para el año 2022. 
+Nota: Los montos de inversión presentados no incluyen la participación de las regiones en proyectos de carácter interregional.</span>", 
+    general_title = "", 
+    escape = FALSE
+  )
   
 ```
 
@@ -321,7 +348,7 @@ ggplot(tabREG_CAT, aes(x = RegionAB, y = TotalCat, fill = Categoría)) +
     }
   ) + 
   labs(
-    caption = "Figura 2 : Inversión 2026 desglosada por proyectos nuevos y de arrastre. \n Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria",
+    caption = "Figura 2 : Inversión 2026 desglosada por proyectos nuevos y de arrastre. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria",
     title = "Inversión 2026 por región y clasificación del proyecto (Arrastre y Nuevo)",
     x = "",
     y = "Inversión 2026 (miles de pesos)"
@@ -375,7 +402,7 @@ ggplot(tab_eje_ministerial_cat_nac, aes(x = `Eje Ministerial`, y = Monto2026, fi
     x = "", 
     y = "Inversión (miles de pesos)", 
     fill = "",
-    caption = "Figura 3: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales. \n Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria."
+    caption = "Figura 3: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria."
   ) + 
   geom_bar(stat = "identity", width = 0.6) + 
   geom_text(
@@ -386,7 +413,7 @@ ggplot(tab_eje_ministerial_cat_nac, aes(x = `Eje Ministerial`, y = Monto2026, fi
   scales::comma(porcentaje, big.mark = ".", decimal.mark = ","), "%"
 )), 
     vjust = -0.5, 
-    size = 3, 
+    size = 2.5, 
     color = "black", 
     fontface = "bold",
     show.legend = FALSE
@@ -394,7 +421,7 @@ ggplot(tab_eje_ministerial_cat_nac, aes(x = `Eje Ministerial`, y = Monto2026, fi
    scale_fill_manual(values = colores) +
   theme(
     panel.background = element_rect(fill = "white", color = NA),
-     panel.spacing = unit(0.8, "lines"), 
+    panel.spacing = unit(0.8, "lines"), 
     panel.border = element_rect(color = "black", fill = NA, size = 0.0005),
     axis.text.x = element_blank(), 
     axis.text.y = element_text(size = 9),
@@ -452,7 +479,7 @@ ggplot(SERVICIOS_NAC , aes(x = reorder(SERVICIOS_A, -Monto2026), y = Monto2026, 
   labs(title = "Distribución de Inversión 2026 por servicios MOP a nivel nacional",
        x = "",
        y = "Inversión (miles de pesos)",
-       caption = "Figura 4: Inversión 2026 para los servicios asociados al MOP. Fuente: Elaboración propia a partir de los datos del \n Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DA, DGA, DP, SISS e INH.") +
+       caption = "        Figura 4: Inversión 2026 para los servicios asociados al MOP. \n Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \n     Nota: La categoría 'Otros' comprende los servicios DA, DGA, DP, SISS e INH.") +
   scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_NAC$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
   theme_minimal()+
@@ -480,7 +507,7 @@ otros_data <- BASE %>%
 kable(otros_data, "html", col.names = c("Servicio", "Inversión", "Porcentaje (%)")) %>%
   kable_styling(full_width = FALSE, 
                 bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
-  footnote(general = "<span style='font-size: 12px;'>Tabla 2: Servicios agrupados en 'Otros', los cuáles incluyen DA, DGA, DP, SISS e INH. Fuente: tabla construida a partir de los datos del Departamento de Gestión Presupuestaria</span>", 
+  footnote(general = "<span style='font-size: 12px;'>Tabla 2: Servicios agrupados en 'Otros', los cuáles incluyen DA, DGA, DP, SISS e INH. \nFuente: tabla construida a partir de los datos del Departamento de Gestión Presupuestaria</span>", 
            general_title = "", 
            escape = FALSE)
 
@@ -525,8 +552,8 @@ ggplot(CC_NA_OTROS, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   ) +
   labs(
     title = "Distribución porcentual de Inversiones 2026 por categoría de cambio climático",
-    caption = "Figura 5: Inversiones 2026 según tipo de proyecto vinculado al cambio climático. Fuente: Elaboración propia a partir \n de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' incluye a aquellos proyectos \npertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    caption = "Figura 5: Inversiones 2026 según tipo de proyecto vinculado al cambio climático. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \nNota: La categoría 'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y \nadaptación'. ",
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -566,11 +593,50 @@ CC_NAC %>%
     full_width = FALSE,
     font_size = 14
   ) %>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 3: Desglose de la categoría 'Otros' de los proyectos relacionados a Cambio Climático. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria</span>", escape = FALSE, general_title = "")
+  footnote(general = "<span style='font-size: 12px;'>Tabla 3: Desglose de la categoría 'Otros' de los proyectos relacionados a Cambio Climático. \nFuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria</span>", escape = FALSE, general_title = "")
 ```
 
 
+```{r, fig.cap=NULL}
 
+SH_NAC <- BASE %>%
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_NAC, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+  label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)") ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 2.7
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en nuevos proyectos del eje de Seguridad Hídrica a nivel nacional",
+    x = NULL,
+    y = "",
+    caption = "Figura 6: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al eje ministerial de Seguridad Hídrica. \nFuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de \nobras de riego \ny obras medianas riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la \nred hidrométrica nacional en Alta Montaña y las que no tengan identificado su programa Dipres (NA).") +
+  theme_minimal() +
+  theme(
+    plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555"),
+    panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+    plot.title = element_text(size = 10, hjust = 1, face = "bold", margin = margin(b = 20)) ) +
+  expand_limits(y = c(0, max(SH_NAC$porcentaje) + 5)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+```
 
 
 ## Arica y Parinacota
@@ -599,7 +665,7 @@ ggplot(SERVICIOS_AYP , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Monto2
     fontface = "bold",) +
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la región de Arica y Parinacota",
        x = "",
-       y = "Inversión (miles de pesos)", caption = "Figura 7: Inversión 2026 para los servicios asociados al MOP para la región de Arica y Parinacota. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \ncomprende los servicios DAP, DGA, DGC y Cultura."
+       y = "Inversión (miles de pesos)", caption = "Figura 7: Inversión 2026 para los servicios asociados al MOP para la región de Arica y Parinacota. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \nNota: La categoría 'Otros' comprende los servicios DAP, DGA, DGC y Cultura."
 ) +
   scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_AYP$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
@@ -627,7 +693,7 @@ otros_data_AYP <- BASE %>%
 kable(otros_data_AYP, "html", col.names = c("Servicio", "Inversión 2026", "Porcentaje (%)")) %>%
   kable_styling(full_width = FALSE, 
                 bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 4: Servicios agrupados en ‘Otros’, los cuáles incluyen DAP, DGA, DGC y Cultura para la región de Arica y Parinacota. Fuente: Tabla construída a partir de los datos del Departamento de Gestión Presupuestaria </span>", general_title = "", escape = FALSE)
+  footnote(general = "<span style='font-size: 12px;'>Tabla 4: Servicios agrupados en ‘Otros’, los cuáles incluyen DAP, DGA, DGC y Cultura para la región de Arica y Parinacota. \nFuente: Tabla construída a partir de los datos del Departamento de Gestión Presupuestaria </span>", general_title = "", escape = FALSE)
 
 ```
 
@@ -658,7 +724,7 @@ ggplot(tab_eje_ministerial_cat_AyP, aes(x = `Eje Ministerial`, y = Monto2026, fi
     y = "Inversión (miles de pesos)",
     title = "Inversión 2026 por clasificación del proyecto (Arrastre y Nuevo)\n para la región de Arica y Parinacota",
     fill = "",
-    caption = "Figura 8: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales para la región de \nArica y Parinacota. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria."
+    caption = "Figura 8: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales para la región de \nArica y Parinacota. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria."
   ) + 
   geom_bar(stat = "identity", width = 0.6) + 
   geom_text(
@@ -668,7 +734,7 @@ ggplot(tab_eje_ministerial_cat_AyP, aes(x = `Eje Ministerial`, y = Monto2026, fi
   scales::comma(round(porcentaje,2), big.mark = ".", decimal.mark = ","), "%"
 )), 
     vjust = -0.5, 
-    size = 3, 
+    size = 2.5, 
     color = "black", 
     fontface = "bold",
     show.legend = FALSE
@@ -687,16 +753,16 @@ ggplot(tab_eje_ministerial_cat_AyP, aes(x = `Eje Ministerial`, y = Monto2026, fi
     legend.text = element_text(size = 8.5),
     legend.title = element_blank(),
     legend.position = "bottom",
-    legend.justification = c(0.9, 0),
-    legend.spacing.x = unit(0.05, "cm"),  
-    legend.spacing.y = unit(0.02, "cm"),
+    legend.justification = c(0.8, 0),
+    legend.spacing.x = unit(0.04, "cm"),  
+    legend.spacing.y = unit(0.01, "cm"),
     legend.box = "horizontal", 
-    legend.key.size = unit(0.4, "cm"),
-    legend.box.spacing = unit(0.5, "cm"), 
+    legend.key.size = unit(0.3, "cm"),
+    legend.box.spacing = unit(0.4, "cm"), 
     plot.margin = margin(t = 10, r = 10, b = 10, l = 10),
     plot.title = element_text(size = 12, face = "bold", hjust = 0.5, margin = margin(b = 20)), 
     plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-30), color = "#555555")) +
-  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) + 
+  guides(fill = guide_legend(nrow = 3, byrow = TRUE)) + 
   scale_y_continuous(
   labels = label_number(scale = 1e-6, suffix = "M"),
   expand = expansion(mult = c(0, 0.3)) 
@@ -714,7 +780,7 @@ ggplot(tab_eje_ministerial_cat_AyP, aes(x = `Eje Ministerial`, y = Monto2026, fi
 
 tab_poblacion_AyP <- PROYECCIONES_POBmulti %>%
   filter(RegionAB == "ARICA Y PARINACOTA") %>% 
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
   summarise(
     "Población 2024" = sum(`Población censada`), 
@@ -725,12 +791,7 @@ tab_poblacion_AyP <- PROYECCIONES_POBmulti %>%
   decimal.mark = ",", 
   nsmall = 2
 ),
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-)
-
-  )
+    "% Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -752,9 +813,9 @@ tab_resumen_AyP %>%
     `Población 2025` = scales::comma(`Población 2025`, big.mark = ".", decimal.mark = ","),
     Monto2026 = ifelse(is.na(Monto2026), "Por definir", scales::comma(Monto2026, big.mark = ".", decimal.mark = ","))
   ) %>%
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
-  footnote(general = "<span style='font-size: 12px;'>Tabla 5: Poblaciones en la región de Arica y Parinacota. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
+  footnote(general = "<span style='font-size: 12px;'>Tabla 5: Poblaciones en la región de Arica y Parinacota. \nFuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. \n(*) Población proyectada al 2025 según el INE. \n(**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. \nNota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
          escape = FALSE)
 
@@ -794,8 +855,8 @@ ggplot(CC_NA_OTROS_AYP, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   ) +
   labs(
     title = "Distribución porcentual de inversiones 2026 por categoría de Cambio Climático\n para la región de Arica y Parinacota",
-    fill = "Categoría",
-    caption = "Figura 9: Inversiones 2026 según tipo de proyecto vinculado al cambio climático para la región de Arica y Parinacota. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \nincluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'."
+    fill = "Categoría - miles$",
+    caption = "Figura 9: Inversiones 2026 según tipo de proyecto vinculado al cambio climático para la región de Arica y Parinacota. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \nNota: La categoría 'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y \nadaptación'."
   ) +
   theme_minimal() +
   theme(plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-40), color = "#555555"),
@@ -836,9 +897,52 @@ CC_AYP %>%
     bootstrap_options = c("striped", "hover", "condensed", "responsive"),
     full_width = FALSE,
     font_size = 14
-  ) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 6: Desglose de la categoría ‘Otros’ de los proyectos relacionados a Cambio Climático para la región de Arica y Parinacota. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
+  ) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 6: Desglose de la categoría ‘Otros’ de los proyectos relacionados a Cambio Climático para la región de Arica y Parinacota. \nFuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
 ```
 
+
+```{r, fig.cap=NULL, tab.cap=NULL}
+
+SH_AYP <- BASE %>%
+  filter(RegionAB == "ARICA Y PARINACOTA") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,1)
+  )
+
+ggplot(SH_AYP, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)") ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de Arica y Parinacota",
+    x = NULL,
+    y = "",
+    caption = "Figura 10: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad \nHídrica para la región de Arica y Parinacota. Fuente: Elaboración propia a partir de datos del Departamento de \nGestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de \nobras de riego y obras de mediano riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la \nred hidrométrica nacional en Alta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_AYP$porcentaje) + 5)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+```
 
 
 ## Tarapacá
@@ -870,7 +974,7 @@ ggplot(SERVICIOS_TARAPACA , aes(x = reorder(ServicioAgrupado, -Monto2026), y = M
   labs(title = "Distribución de Inversión 2026 por servicios MOP de la región de Tarapacá",
        x = "",
        y = "Inversión (miles de pesos)",
-       caption = "Figura 11: Inversión 2026 para los servicios asociados al MOP para la región de Tarapacá. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DAP, DGA, DGC \ny DOP.") +
+       caption = "Figura 11: Inversión 2026 para los servicios asociados al MOP para la región de Tarapacá. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \nNota: La categoría 'Otros' comprende los servicios DAP, DGA, DGC y DOP.") +
   scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_TARAPACA$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
   theme_minimal()+
@@ -967,7 +1071,7 @@ ggplot(tab_eje_ministerial_cat_TPCA, aes(x = `Eje Ministerial`, y = Monto2026, f
 ```{r}
 tab_poblacion_Tarapaca <- PROYECCIONES_POBmulti %>%
   filter(RegionAB == "TARAPACÁ") %>%  
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
 summarise(
     "Población 2024" = sum(`Población censada`), 
@@ -978,10 +1082,7 @@ summarise(
   decimal.mark = ",", 
   nsmall = 2
 ),
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 tab_monto_Tarapaca <- BASE %>%
@@ -997,7 +1098,7 @@ tab_resumen_Tarapaca %>%
   mutate(Monto2026 = if_else(Comunas == "PICA", NA_real_, Monto2026)) %>% 
 mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", decimal.mark = ","), `Población 2025` = scales::comma(`Población 2025`, big.mark = ".", decimal.mark = ","), 
        Monto2026 = ifelse(is.na(Monto2026), "Por definir", scales::comma(Monto2026, big.mark = ".", decimal.mark = ","))) %>%
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 8: Poblaciones e Inversiones 2025 en la región de Tarapacá. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
          escape = FALSE)
@@ -1040,9 +1141,8 @@ ggplot(CC_NA_OTROS_TARAPACA, aes(x = "", y = Monto2026, fill = CambioClimaticoA)
   ) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático \n para la región de Tarapacá",
-    fill = "Categoría",
-    caption =  "Figura 13: Inversión 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Tarapacá. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación' 'Mitigación' y 'Mixto, mitigación y adaptación'. \nNota 2: La categoría 'No aplica incluye' aquellos proyectos categorizados como NA o No. "
-  ) +
+    fill = "Categoría - miles$",
+    caption =  "Figura 13: Inversión 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Tarapacá. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \nNota: La categoría 'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación' 'Mitigación' y 'Mixto, mitigación \ny adaptación'. Nota 2: La categoría 'No aplica incluye' aquellos proyectos categorizados como NA o No. ") +
   theme_minimal() +
   theme(plot.title = element_text(size = 12, face = "bold", hjust = 0, margin = margin(b = 20)),
         plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-45), color = "#555555"),
@@ -1080,11 +1180,58 @@ CC_TARAPACA %>%
     full_width = FALSE,
     font_size = 14
   ) %>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 9: Desglose de la categoría 'Otros' de los proyectos relacionados a Cambio Climático para la región de Tarapacá. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria</span>
+  footnote(general = "<span style='font-size: 12px;'>Tabla 9: Desglose de la categoría 'Otros' de los proyectos relacionados a Cambio Climático para la región de Tarapacá. \nFuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria</span>
 ", escape = FALSE, general_title = "")
 
 ```
 
+```{r, fig.cap=NULL}
+
+
+SH_TARAPACA <- BASE %>%
+  filter(RegionAB == "TARAPACÁ") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,1)
+  )
+
+ggplot(SH_TARAPACA, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)") ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 2.7
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en nuevos proyectos del Eje de Seguridad Hídrica para la \nregión de Tarapacá",
+    x = NULL,
+    y = "Porcentaje del monto total",
+    caption = "Figura 14: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al eje ministerial de Seguridad Hídrica \npara la región de Tarapacá. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas de riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en Alta \nMontaña y las que no tengan identificado su programa Dipres (NA)."
+
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+   plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))+
+  expand_limits(y = c(0, max(SH_TARAPACA$porcentaje) + 5))
+
+
+
+```
 
 
 ## Antofagasta
@@ -1208,22 +1355,18 @@ plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100
 ```{r}
 tab_poblacion_Antofagasta <- PROYECCIONES_POBmulti %>%
   filter(RegionAB == "ANTOFAGASTA") %>%  
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),  
-    "Población 2025" = first(`Suma de Poblacion 2025`),  
-"Crec/Decrec relativo de Población 2024 al 2025" = format(
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
   round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
   nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -1246,7 +1389,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
   
   mutate(Comunas = case_when(Comunas == "MARIA ELENA" ~ "MARÍA ELENA", Comunas == "OLLAGUE" ~ "OLLAGÜE", TRUE ~ Comunas)) %>% 
   
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 11: Poblaciones e Inversiones 2025 en la región de Antofagasta. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado..</span>", 
          general_title = "", 
          escape = FALSE)
@@ -1286,7 +1429,7 @@ ggplot(CC_NA_OTROS_ANTOFAGASTA, aes(x = "", y = Monto2026, fill = CambioClimatic
   ) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático  \n para la región de Antofagasta",
-    fill = "Categoría",
+    fill = "Categoría - miles$",
        caption =  "Figura 17: Inversión 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Antofagasta. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación' 'Mitigación' y 'Mixto, mitigación y adaptación'. "
   
   ) +
@@ -1332,6 +1475,55 @@ CC_ANTOFAGASTA %>%
 ```
 
 
+```{r, fig.cap = NULL}
+
+SH_ANTOF <- BASE %>%
+  filter(RegionAB == "ANTOFAGASTA") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_ANTOF, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+     aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)")
+    ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de Antofagasta",
+    x = NULL,
+    y = "",
+    caption = "Figura 18: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región de Antofagasta. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-78), color = "#555555")
+
+  ) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))+
+  expand_limits(y = c(0, max(SH_ANTOF$porcentaje) + 5))
+
+
+
+```
+
 ## Atacama
 
 
@@ -1360,7 +1552,7 @@ ggplot(SERVICIOS_ATACAMA , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Mo
   labs(title = "Distribución de Inversión 2026 por Servicios MOP para la región de Atacama",
        x = "",
        y = "Inversión (miles de pesos)",
-       caption = "Figura 19: Inversión 2026 para los servicios asociados al MOP para la región de Atacama. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DAP, SSR \ny DOP.") +
+       caption = " Figura 19: Inversión 2026 para los servicios asociados al MOP para la región de Atacama. \n Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \n comprende los servicios DAP, SSR y DOP.") +
   scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_ATACAMA$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
   theme_minimal()+
@@ -1453,22 +1645,19 @@ ggplot(tab_eje_ministerial_cat_ATCMA, aes(x = `Eje Ministerial`, y = Monto2026, 
 
 
 tab_poblacion_Atacama <- PROYECCIONES_POBmulti %>%
-  filter(RegionAB == "ATACAMA") %>% 
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  filter(RegionAB == "ATACAMA") %>%  
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
 summarise(
     "Población 2024" = sum(`Población censada`), 
     "Población 2025" = sum(`Suma de Poblacion 2025`), 
-   "Crec/Decrec relativo de Población 2024 al 2025" = format(
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
   round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
   nsmall = 2
 ),
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -1489,7 +1678,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
   
   mutate(Comunas = case_when(Comunas == "COPIAPO" ~ "COPIAPÓ", TRUE ~ Comunas)) %>%
   
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 14: Poblaciones e Inversiones 2025 en la región de Atacama. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
          escape = FALSE)
@@ -1531,8 +1720,8 @@ ggplot(CC_NA_OTROS_ATACAMA, aes(x = "", y = Monto2026, fill = CambioClimaticoA))
   ) +
   labs(
     title = "Distribución porcentual de inversiones 2026 por categoría de Cambio Climático\n para la región de Atacama",
-    caption = "Figura 21: Inversión 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Atacama. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación' 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    caption = " Figura 21: Inversión 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Atacama. \n Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría \n 'Otros' incluye a aquellos proyectos pertenecientes a 'adaptación', 'mitigación' y 'mixto, mitigación y adaptación'. ",
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-47), color = "#555555"),
@@ -1572,6 +1761,54 @@ CC_ATACAMA %>%
   ) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 15: Desglose de la categoría ‘Otros’ de los proyectos relacionados a Cambio Climático para la región de Atacama. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
 ```
 
+
+```{r, fig.cap = NULL}
+
+
+SH_ATACAMA <- BASE %>%
+  filter(RegionAB == "ATACAMA") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,1)
+  )
+
+ggplot(SH_ATACAMA, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+            label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)") ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de Atacama",
+    x = NULL,
+    y = "",
+     caption = "Figura 23: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región de Atacama. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica \nnacional en Alta Montaña y las que no tengan identificado su programa Dipres (NA)."
+
+  ) +
+  theme_minimal() +
+  theme(
+   panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-36), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_ATACAMA$porcentaje) + 5)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+
+
+```
 
 
 ## Coquimbo
@@ -1691,22 +1928,18 @@ caption = "Figura 24: Inversión 2026 por categoría de proyecto (nuevo y arrast
 ```{r, fig.cap = NULL}
 tab_poblacion_Coquimbo <- PROYECCIONES_POBmulti %>%
   filter(RegionAB == "COQUIMBO") %>%  
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),  
-    "Población 2025" = first(`Suma de Poblacion 2025`),  
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
   "Crec/Decrec relativo de Población 2024 al 2025" = format(
   round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
-  nsmall = 1
+  nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 tab_monto_Coquimbo <-  BASE %>%
@@ -1728,7 +1961,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
   
   mutate(Comunas = case_when(Comunas == "COMBARBALA" ~ "COMBARBALÁ", Comunas == "PAIGUANO" ~ "PAIHUANO", Comunas == "RIO HURTADO" ~ "RÍO HURTADO", TRUE ~ Comunas)) %>% 
   
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 17: Poblaciones e Inversiones 2025 en la región de Coquimbo. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
          escape = FALSE)
@@ -1770,7 +2003,7 @@ ggplot(CC_NA_OTROS_COQUIMBO, aes(x = "", y = Monto2026, fill = CambioClimaticoA)
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático  \n para la región de Coquimbo",
         caption = "Figura 25: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Coquimbo. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \nincluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -1812,6 +2045,52 @@ CC_COQUIMBO %>%
 
 ```
 
+
+```{r, fig.cap = NULL}
+
+SH_COQUIMBO <- BASE %>%
+  filter(RegionAB == "COQUIMBO") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,1)
+  )
+
+ggplot(SH_COQUIMBO, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+            label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)") ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en nuevos proyectos del Eje de Seguridad Hídrica para la \nregión de Coquimbo",
+    x = NULL,
+    caption = "Figura 26: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad \nHídrica para la región de Coquimbo. Fuente: Elaboración propia a partir de datos del Departamento de \nGestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en Alta \nMontaña y las que no tengan identificado su programa Dipres (NA).",
+    y = ""
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_COQUIMBO$porcentaje) + 5))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+
+
+```
 
 
 ## Valparaíso
@@ -1885,7 +2164,7 @@ ggplot(tab_eje_ministerial_cat_VALPO, aes(x = `Eje Ministerial`, y = Monto2026, 
     y = "Inversión (miles de pesos)", 
     fill = "",
     title = "Inversión 2026 según clasificación del proyecto (Arrastre y Nuevo) y Eje Ministerial para la \nregión de Valparaíso",
-    caption = "Figura 28: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales \npara la región de Valparaíso. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria."
+    caption = "Figura 28: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales para la \nregión de Valparaíso. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria."
 
   ) + 
   geom_bar(stat = "identity", width = 0.6) + 
@@ -1936,26 +2215,20 @@ ggplot(tab_eje_ministerial_cat_VALPO, aes(x = `Eje Ministerial`, y = Monto2026, 
 ```
 
 ```{r}
-
-
-
 tab_poblacion_Valparaiso <- PROYECCIONES_POBmulti %>%
   filter(RegionAB == "VALPARAÍSO") %>%  
- select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
 summarise(
     "Población 2024" = sum(`Población censada`), 
     "Población 2025" = sum(`Suma de Poblacion 2025`), 
-   "Crec/Decrec relativo de Población 2024 al 2025" = format(
-  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 2), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
+  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
   nsmall = 2
 ),
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 tab_monto_Valparaiso <- BASE %>%
@@ -1974,7 +2247,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
                                   Comunas == "QUILPUE" ~ "QUILPUÉ", Comunas == "SANTA MARIA" ~ "SANTA MARÍA",
                                   Comunas == "VALPARAISO" ~ "VALPARAÍSO", TRUE ~ Comunas)) %>% 
   
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
 
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 20: Poblaciones e Inversiones 2025 en la región de Valparaíso. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
@@ -2015,7 +2288,7 @@ ggplot(CC_NA_OTROS_VALPO, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   ) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático  \n para la región de Valparaíso",
-    fill = "Categoría",
+    fill = "Categoría - miles$",
          caption =  "Figura 29: Inversión 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Valparaíso. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación' 'Mitigación' y 'Mixto, mitigación y adaptación'. "
 
   ) +
@@ -2061,6 +2334,50 @@ CC_VALPO %>%
 
 ```
 
+```{r, fig.cap = NULL}
+
+
+SH_VALPO <- BASE %>%
+  filter(RegionAB == "VALPARAÍSO") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_VALPO, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+            label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)") ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de Valparaíso",
+    x = NULL,
+    y = "",
+    caption = "Figura 30: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al eje ministerial de Seguridad Hídrica \npara la región de Valparaíso. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en Alta \nMontaña y las que no tengan identificado su programa Dipres (NA).") +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_VALPO$porcentaje) + 5))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+```
+
 
 ## Metropolitana de Santiago
 
@@ -2070,7 +2387,7 @@ SERVICIOS_RM <- BASE %>%
   filter(RegionAB == "METROPOLITANA") %>%
   mutate(
     ServicioAgrupado = case_when(
-      Servicio %in% c("DP", "DGA", "SISS", "INH", "DA") ~ "OTROS",
+      Servicio %in% c("DP", "DGA", "SISS", "INH") ~ "OTROS",
       TRUE ~ Servicio
     )
   ) %>%
@@ -2085,7 +2402,7 @@ ggplot(SERVICIOS_RM , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Monto20
                "\n(", format(Porcentaje, nsmall = 1, decimal.mark = ","), "%)")), vjust = -0.5, size = 3, 
     color = "black", 
     fontface = "bold",) +
-  labs(title = "Distribución de Inversión 2026 por servicios MOP para la \nregión Metropolitana de Santiago",
+  labs(title = "Distribución de Inversión 2026 por servicios MOP para la \nRegión Metropolitana de Santiago",
        x = "",
        y = "Inversión (miles de pesos)",
        caption = "Figura 31: Inversión 2026 para los servicios asociados al MOP para la región Metropolitana de Santiago. Fuente: Elaboración propia a \npartir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DAP, \nDGA, DP, INH y SISS ") +
@@ -2109,7 +2426,7 @@ otros_data_RM <- BASE %>%
   group_by(Servicio) %>%
   summarise(Monto = sum(`Monto 2026`, na.rm = TRUE)) %>%
   mutate(Porcentaje = Monto / sum(Monto) * 100) %>% 
-  filter(Servicio %in% c("DP", "DGA", "SISS", "INH", "DA")) %>%
+  filter(Servicio %in% c("DP", "DGA", "SISS", "INH")) %>%
   mutate(
     Monto = scales::comma(Monto, big.mark = ".", decimal.mark = ","),
     Porcentaje = scales::comma(round(Porcentaje, 3), big.mark = ".", decimal.mark = ",")
@@ -2120,7 +2437,7 @@ otros_data_RM <- BASE %>%
 kable(otros_data_RM, "html", col.names = c("Servicio", "Inversión 2026", "Porcentaje (%)")) %>%
   kable_styling(full_width = FALSE, 
                 bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 22: Servicios agrupados en ‘Otros’, los cuáles incluyen DP, DGA, SISS, INH, DA para la región Metropolitana de Santiago. Fuente: Tabla construída a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
+  footnote(general = "<span style='font-size: 12px;'>Tabla 22: Servicios agrupados en ‘Otros’, los cuáles incluyen DP, DGA, SISS e INH para la región Metropolitana de Santiago. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
 
 
 ```
@@ -2158,7 +2475,7 @@ caption = "Figura 32: Inversión 2026 por categoría de proyecto (nuevo y arrast
   scales::comma(porcentaje, big.mark = ".", decimal.mark = ","), "%"
 )), 
     vjust = -0.5, 
-    size = 3, 
+    size = 2.5, 
     color = "black", 
     fontface = "bold",
     show.legend = FALSE
@@ -2186,7 +2503,7 @@ caption = "Figura 32: Inversión 2026 por categoría de proyecto (nuevo y arrast
     plot.margin = margin(t = 10, r = 10, b = 10, l = 10),
     plot.title = element_text(size = 10, face = "bold", hjust = 0.5, margin = margin(b = 20)), 
     plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-45), color = "#555555")) +
-  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) + # Divide la leyenda en 2 filas
+  guides(fill = guide_legend(nrow = 3, byrow = TRUE)) + # Divide la leyenda en 2 filas
   scale_y_continuous(
     labels = label_number(scale = 1e-6, suffix = "M"),
     expand = expansion(mult = c(0, 0.3))
@@ -2202,23 +2519,19 @@ PROYECCIONES_POBmulti <- PROYECCIONES_POBmulti %>% mutate(Comunas = case_when(Co
 
 
 tab_poblacion_Metropolitana <- PROYECCIONES_POBmulti %>%
-  filter(RegionAB=="METROPOLITANA") %>%  
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  filter(RegionAB == "METROPOLITANA") %>%  
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),  
-    "Población 2025" = first(`Suma de Poblacion 2025`),  
-   "Crec/Decrec relativo de Población 2024 al 2025" = format(
-  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 2), 
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
+  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
-  nsmall = 1
+  nsmall = 2
 ),
-"Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
-
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 tab_monto_RM <- BASE %>%
   filter(RegionAB == "METROPOLITANA") %>% 
@@ -2264,7 +2577,7 @@ mutate(Comunas = case_when(Comunas == "ALHUE" ~ "ALHUÉ",
             Comunas == "SAN RAMON" ~ "SAN RAMÓN",
             TRUE ~ Comunas)) |> 
   
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 23: Poblaciones e Inversiones 2025 en la región Metropolitana de Santiago. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN. (*) Población 
 proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", general_title = "", escape = FALSE)
 
@@ -2306,7 +2619,7 @@ ggplot(CC_NA_OTROS_RM, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático  \n para la región Metropolitana de Santiago",    
     caption = "Figura 33: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región Metropolitana de Santiago. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \nincluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'.",
-    fill = "Categoría"
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -2351,6 +2664,52 @@ CC_RM %>%
 ```
 
 
+```{r, fig.cap = NULL}
+
+
+SH_RM <- BASE %>%
+  filter(RegionAB == "METROPOLITANA") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,1)
+  )
+
+ggplot(SH_RM, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(round(porcentaje, 3), nsmall = 1, decimal.mark = ","), "%)") )
+    ,
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en nuevos proyectos del Eje de Seguridad Hídrica para la \nregión Metropolitana de Santiago",
+    x = NULL,
+    y = "",
+    caption = "Figura 34: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región Metropolitana de Santiago. Fuente: Elaboración propia a partir de datos del Departamento de Gestión \nPresupuestaria. Nota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_RM$porcentaje) + 5))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+```
+
 
 ## Libertador del General Bernardo O'higgins
  
@@ -2379,7 +2738,7 @@ ggplot(SERVICIOS_LGBO , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Monto
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la región de O'Higgins",
        x = "",
        y = "Inversión (miles de pesos)",
-       caption = "Figura 35: Inversión 2026 para los servicios asociados al MOP para la región de O'Higgins. Fuente: Elaboración propia a \npartir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DGA y DOP") +
+       caption = "Figura 35: Inversión 2026 para los servicios asociados al MOP para la región de O'Higgins. Fuente: Elaboración propia a \npartir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DGA y \nDOP") +
   scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_LGBO$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
   theme_minimal()+
@@ -2490,24 +2849,19 @@ ggplot(tab_eje_ministerial_cat_LGBO, aes(x = `Eje Ministerial`, y = Monto2026, f
 
 
 tab_poblacion_OHiggins <- PROYECCIONES_POBmulti %>%
-  filter(RegionAB == "O'HIGGINS") %>% 
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  filter(RegionAB == "O'HIGGINS") %>%  
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),  
-    "Población 2025" = first(`Suma de Poblacion 2025`),  
- "Crec/Decrec relativo de Población 2024 al 2025" = format(
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
   round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
-  nsmall = 1
+  nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
-
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 tab_monto_Ohiggins <- BASE %>%
@@ -2530,7 +2884,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
 mutate(Comunas = case_when(Comunas == "MACHALI" ~ "MACHALÍ",
                                 Comunas == "CHEPICA" ~ "CHÉPICA",
                                 Comunas == "REQUINOA" ~ "REQUÍNOA", TRUE ~ Comunas)) %>% 
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% 
 footnote(
   general = "<span style='font-size: 12px;'>Tabla 26: Poblaciones e Inversiones 2025 en la región del Libertador Bernardo O'Higgins. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>",
@@ -2573,7 +2927,7 @@ ggplot(CC_NA_OTROS_LGBO, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   ) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático  \n para la región de O'Higgins",
-    fill = "Categoría",
+    fill = "Categoría - miles$",
   caption =  "Figura 37: Inversión 2026 según tipo de proyecto vinculado al Cambio Climático para la región de O'Higgins. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación' 'Mitigación' y 'Mixto, mitigación y adaptación'. "
 
   ) +
@@ -2619,6 +2973,52 @@ CC_LGBO %>%
 
 ```
 
+
+```{r, fig.cap = NULL}
+
+SH_LGBO <- BASE %>%
+  filter(RegionAB == "O'HIGGINS") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_LGBO, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)") ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de O'Higgins",
+    x = NULL,
+    y = "",
+    caption = "Figura 38: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región de O'Higgins. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas de riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_LGBO$porcentaje) + 5))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+```
+
+
 ## Maule
 
 
@@ -2644,7 +3044,7 @@ ggplot(SERVICIOS_MAULE , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Mont
     fontface = "bold",) +
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la región del Maule",
 y = "Inversión (miles de pesos)",
-       caption = "Figura 39: Inversión 2026 para los servicios asociados al MOP de la región del Maule. Fuente: Elaboración propia a  \npartir de los datos del Departamento de Gestión Presupuestaria.",
+       caption = "Figura 39: Inversión 2026 para los servicios asociados al MOP de la región del Maule. Fuente: Elaboración propia a  \n         partir de los datos del Departamento de Gestión Presupuestaria.",
        x = "") +
     scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_MAULE$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
@@ -2735,27 +3135,20 @@ ggplot(tab_eje_ministerial_cat_MAULE, aes(x = `Eje Ministerial`, y = Monto2026, 
 
 ```{r}
 
-
-
 tab_poblacion_Maule <- PROYECCIONES_POBmulti %>%
   filter(RegionAB == "MAULE") %>%  
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`), 
-    "Población 2025" = first(`Suma de Poblacion 2025`),  
-    "Crec/Decrec relativo de Población 2024 al 2025" = format(
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
   round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
-  nsmall = 1
+  nsmall = 2
 ),
- 
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
-
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 tab_monto_Maule <- BASE %>%
@@ -2784,7 +3177,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
                 Comunas == "RIO CLARO" ~ "RÍO CLARO",
                 Comunas == "VICHUQUEN" ~ "VICHUQUÉN",
                 TRUE ~ Comunas)) %>% 
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 29: Poblaciones e Inversiones 2025 en la región del Maule. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN. (*) Población 
 proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores NA en la columna Inversión 2026 corresponden a comunas que forman parte de proyectos intercomunales.</span>", 
          general_title = "", 
@@ -2831,7 +3224,7 @@ ggplot(CC_NA_OTROS_MAULE, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático \n para la región del Maule",
 caption = "Figura 41: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región del Maule. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \nincluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -2878,6 +3271,53 @@ CC_MAULE %>%
 ```
 
 
+```{r, fig.cap = NULL}
+
+
+SH_MAULE <- BASE %>%
+  filter(RegionAB == "MAULE") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_MAULE, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)")
+    ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica\n para la región del Maule",
+    x = NULL,
+    y = "",
+    caption = "Figura 42: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región del Maule. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas de riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA).") +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+
+  ) +
+  expand_limits(y = c(0, max(SH_MAULE$porcentaje) + 5))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+
+```
+
 
 ## Ñuble
 
@@ -2905,7 +3345,7 @@ ggplot(SERVICIOS_NUBLE , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Mont
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la región del Ñuble",
        x = "",
        y = "Inversión (miles de pesos)",
-       caption = "Figura 43: Inversión 2026 para los servicios asociados al MOP par la región del Ñuble. Fuente: Elaboración propia a partir de los datos del \n Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DA, DAP, DOP, DGC.") +
+       caption = "Figura 43: Inversión 2026 para los servicios asociados al MOP par la región del Ñuble. Fuente: Elaboración propia a partir de \nlos datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DA, DAP, DOP, DGC.") +
     scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_NUBLE$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
   theme_minimal()+
@@ -2963,7 +3403,7 @@ ggplot(tab_eje_ministerial_cat_NUBLE, aes(x = `Eje Ministerial`, y = Monto2026, 
     x = "", 
     y = "Inversión (miles de pesos)", 
     fill = "",
-    caption = "Figura 44: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales para la región del \nÑuble. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria."
+    caption = "Figura 44: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales para la región de \nÑuble. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria."
 
   ) + 
   geom_bar(stat = "identity", width = 0.6) + 
@@ -3015,26 +3455,20 @@ ggplot(tab_eje_ministerial_cat_NUBLE, aes(x = `Eje Ministerial`, y = Monto2026, 
 
 ```{r}
 
-
-
 tab_poblacion_Nuble <- PROYECCIONES_POBmulti %>%
   filter(RegionAB == "ÑUBLE") %>%  
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),  
-    "Población 2025" = first(`Suma de Poblacion 2025`),  
- "Crec/Decrec relativo de Población 2024 al 2025" = format(
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
   round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
-  nsmall = 1
+  nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -3066,7 +3500,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
     Comunas == "ÑIQUEN" ~ "ÑIQUÉN",
     TRUE ~ Comunas)) %>% 
   
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 32: Poblaciones e Inversiones 2025 en la región del Ñuble. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN. (*) Población 
 proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores NA en la columna Inversión 2026 corresponden a comunas que forman parte de proyectos intercomunales.</span>", 
          general_title = "", 
@@ -3109,7 +3543,7 @@ ggplot(CC_NA_OTROS_NUBLE, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático  \n para la región del Ñuble",
     caption = "Figura 45: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región del Ñuble. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \nincluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -3153,6 +3587,51 @@ CC_NUBLE %>%
 ```
 
 
+```{r, fig.cap = NULL}
+
+SH_NUBLE <- BASE %>%
+  filter(RegionAB == "ÑUBLE") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_NUBLE, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(round(porcentaje, 3), nsmall = 1, decimal.mark = ","), "%)") ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión del Ñuble",
+    x = NULL,
+    y = "",
+    caption = "Figura 46: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región del Ñuble. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas de riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_NUBLE$porcentaje) + 5))+
+   scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+```
+
+
 ## Bíobío
 
 
@@ -3179,7 +3658,7 @@ ggplot(SERVICIOS_BBIO , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Monto
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la región del Biobío",
        x = "",
        y = "Inversión (miles de pesos)",
-        caption = "Figura 47: Inversión para los servicios asociados al MOP para la región deL Biobío. Fuente: Elaboración propia a partir de \nlos datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DAP, DGA, DA y Cultura") +
+        caption = "Figura 47: Inversión para los servicios asociados al MOP para la región del Biobío. Fuente: Elaboración propia a partir de \n datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DAP, DGA, DA y \nCultura") +
     scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_BBIO$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
   theme_minimal()+
@@ -3212,7 +3691,7 @@ kable(otros_data_BBIO, "html", col.names = c("Servicio", "Inversión 2026", "Por
                 bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>%
   kable_styling(full_width = FALSE, 
                 bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 33: Servicios agrupados en ‘Otros’, los cuáles incluyen DA, DGA, DAP y Cultura para la región del Biobío. Fuente: Tabla construída a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
+  footnote(general = "<span style='font-size: 12px;'>Tabla 33: Servicios agrupados en ‘Otros’, los cuáles incluyen DA, DGA, DAP y Cultura para la región del Biobío. Fuente: Tabla construída a partir de datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
 
 
 ```
@@ -3293,23 +3772,18 @@ ggplot(tab_eje_ministerial_cat_BIOBIO, aes(x = `Eje Ministerial`, y = Monto2026,
 
 tab_poblacion_Biobio <- PROYECCIONES_POBmulti %>%
   filter(RegionAB == "BIOBÍO") %>%  
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),  
-    "Población 2025" = first(`Suma de Poblacion 2025`),  
-"Crec/Decrec relativo de Población 2024 al 2025" = format(
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
   round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
-  nsmall = 1
+  nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-)
-  )
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -3344,7 +3818,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
     Comunas == "TOME" ~ "TOMÉ",
     TRUE ~ Comunas
     )) %>% 
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 34: Poblaciones e Inversiones 2025 en la región del Biobío. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
          escape = FALSE)
@@ -3386,7 +3860,7 @@ ggplot(CC_NA_OTROS_BBIO, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático \n para la región del Biobío",
     caption = "Figura 49: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región del Biobío. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \nNota: La categoría 'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y \n'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -3433,6 +3907,53 @@ CC_BBIO %>%
 ```
 
 
+```{r, fig.cap = NULL}
+
+
+SH_BBIO <- BASE %>%
+  filter(RegionAB == "BIOBÍO") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_BBIO, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)")
+    ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión del BioBío",
+    x = NULL,
+    y = "",
+    caption = "Figura 50: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región del Biobío. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas de riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_BBIO$porcentaje) + 5))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+```
+
+
 ## La Araucanía
 
 
@@ -3460,7 +3981,7 @@ ggplot(SERVICIOS_ARAUC , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Mont
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la región de La Araucanía",
        x = "",
        y = "Inversión (miles de pesos)",
-       caption = "Figura 51: Inversión 2026 para los servicios asociados al MOP para la región de La Araucanía. Fuente: Elaboración propia a \npartir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios Cultura, DOP y \nDAP."
+       caption = "Figura 51: Inversión 2026 para los servicios asociados al MOP para la región de La Araucanía. Fuente: Elaboración propia a \npartir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios Cultura, \nDOP y DAP."
 ) +
     scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_ARAUC$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
@@ -3491,7 +4012,7 @@ otros_data_ARAUC <- BASE %>%
 kable(otros_data_ARAUC, "html", col.names = c("Servicio", "Inversión 2026", "Porcentaje (%)")) %>%
   kable_styling(full_width = FALSE, 
                 bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 36: Servicios agrupados en ‘Otros’, los cuáles incluyen DAP, DOP y Cultura para la región de La Araucanía. Fuente: Tabla construída a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
+  footnote(general = "<span style='font-size: 12px;'>Tabla 36: Servicios agrupados en ‘Otros’, los cuáles incluyen DAP, DOP y Cultura para la región de La Araucanía. Fuente: Tabla construída a partir de datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
 
 
 
@@ -3572,27 +4093,20 @@ ggplot(tab_eje_ministerial_cat_ARAUC, aes(x = `Eje Ministerial`, y = Monto2026, 
 
 ```{r}
 
-
-
-
 tab_poblacion_Araucania <- PROYECCIONES_POBmulti %>%
-  filter(RegionAB == "LA ARAUCANÍA") %>%
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`,`Número de personas en situación de pobreza multidimensional (**)`) %>%
+  filter(RegionAB == "LA ARAUCANÍA") %>%  
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),
-    "Población 2025" = first(`Suma de Poblacion 2025`),
-    "Crec/Decrec relativo de Población 2024 al 2025" = format(
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
   round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
-  nsmall = 1
+  nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -3621,7 +4135,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
     Comunas == "VILCUN" ~ "VILCÚN",
     TRUE ~ Comunas
                                   )) %>% 
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 37: Poblaciones e Inversiones 2025 en la región de La Araucanía. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
          escape = FALSE)
@@ -3662,8 +4176,8 @@ ggplot(CC_NA_OTROS_ARAUC, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   ) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático \n para la región de La Araucanía",
-    caption = "Figura 53: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región de La Araucanía. \nFuente: Elaboración propia a partir  de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría '\nOtros' incluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    caption = "Figura 53: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región de La Araucanía. \nFuente: Elaboración propia a partir  de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -3707,8 +4221,56 @@ CC_ARAUC %>%
 ```
 
 
-## Los Ríos
+```{r, fig.cap = NULL}
 
+
+SH_ARAUC <- BASE %>%
+  filter(RegionAB == "LA ARAUCANÍA") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_ARAUC, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)")
+    ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de La Araucanía",
+    x = NULL,
+    y = "",
+    caption = "Figura 54: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región de La Araucanía. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas de riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_ARAUC$porcentaje) + 5))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+
+
+```
+
+
+## Los Ríos
 
 
 ```{r, fig.cap = NULL}
@@ -3732,7 +4294,7 @@ ggplot(SERVICIOS_RIOS , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Monto
     color = "black", 
     fontface = "bold",) +
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la región de Los Ríos",
-       caption = "Figura 55: Inversión 2026 para los servicios asociados al MOP para la región de Los Ríos. Fuente: Elaboración propia a \npartir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DOH, DGA, DA y Cultura.",
+       caption = "Figura 55: Inversión 2026 para los servicios asociados al MOP para la región de Los Ríos. Fuente: Elaboración propia a \npartir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DOH, \nDGA, DA y Cultura.",
        x = "",
        y = "Inversión (miles de pesos)") +
     scale_fill_manual(values = colores_servicios) +
@@ -3764,7 +4326,7 @@ otros_data_RIOS <- BASE %>%
 kable(otros_data_RIOS, "html", col.names = c("Servicio", "Inversión 2026", "Porcentaje (%)")) %>%
   kable_styling(full_width = FALSE, 
                 bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 39: Servicios agrupados en ‘Otros’, los cuáles incluyen DOH, DGA DGC y DA para la región de Los Ríos. Fuente: Tabla construída a partir de los datos del Departamento de Gestión Presupuestaria.</span>",escape = FALSE, general_title = "")
+  footnote(general = "<span style='font-size: 12px;'>Tabla 39: Servicios agrupados en ‘Otros’, los cuáles incluyen DOH, DGA DGC y DA para la región de Los Ríos. Fuente: Tabla construída a partir de datos del Departamento de Gestión Presupuestaria.</span>",escape = FALSE, general_title = "")
 
 
 
@@ -3806,7 +4368,7 @@ ggplot(tab_eje_ministerial_cat_RIOS, aes(x = `Eje Ministerial`, y = Monto2026, f
 )
 ), 
     vjust = -0.5, 
-    size = 3, 
+    size = 2.5, 
     color = "black", 
     fontface = "bold",
     show.legend = FALSE
@@ -3834,39 +4396,31 @@ theme(
     plot.margin = margin(t = 10, r = 10, b = 10, l = 10),
     plot.title = element_text(size = 10, face = "bold", hjust = 0.5, margin = margin(b = 20)), 
     plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-30), color = "#555555")) +
-  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) + # Divide la leyenda en 2 filas
+  guides(fill = guide_legend(nrow = 3, byrow = TRUE)) + # Divide la leyenda en 2 filas
   scale_y_continuous(
     labels = label_number(scale = 1e-6, suffix = "M"),
     expand = expansion(mult = c(0, 0.3))
   )
 
-
-
-
 ```
+
 
 ```{r}
 
-
 tab_poblacion_LosRios <- PROYECCIONES_POBmulti %>%
-  filter(RegionAB == "LOS RÍOS") %>%
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  filter(RegionAB == "LOS RÍOS") %>%  
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),
-    "Población 2025" = first(`Suma de Poblacion 2025`),
-    "Crec/Decrec relativo de Población 2024 al 2025" = format(
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
   round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
-  nsmall = 1
+  nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-)
-  )
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -3893,7 +4447,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
                           Comunas == "RIO BUENO" ~ "RÍO BUENO",
                           TRUE ~ Comunas
                                   )) %>% 
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 40: Poblaciones e Inversiones 2025 en la región de Los Ríos. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
          escape = FALSE)
@@ -3934,7 +4488,7 @@ ggplot(CC_NA_OTROS_RIOS, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   labs(
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático \n para la región de Los Ríos",
     caption = "Figura 57: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Los Ríos. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \nincluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -3982,6 +4536,57 @@ CC_RIOS %>%
 ```
 
 
+```{r, fig.cap = NULL}
+
+
+SH_RIOS <- BASE %>%
+  filter(RegionAB == "LOS RÍOS") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_RIOS, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)")
+    ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de Los Ríos",
+    x = NULL,
+    y = "",
+    caption = "Figura 58: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región de Los Ríos. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas de riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-45), color = "#555555")
+
+  ) +
+  expand_limits(y = c(0, max(SH_RIOS$porcentaje) + 5))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+
+```
+
+
+
 ## Los Lagos
 
 ```{r, fig.cap = NULL}
@@ -3989,7 +4594,7 @@ SERVICIOS_LAGOS <- BASE %>%
   filter(RegionAB == "LOS LAGOS") %>%
   mutate(
     ServicioAgrupado = case_when(
-      Servicio %in% c("DAP", "DGA", "DOH", "Cultura") ~ "OTROS",
+      Servicio %in% c("DAP", "DGA", "DOH", "DA") ~ "OTROS",
       TRUE ~ Servicio
     )
   ) %>%
@@ -4008,7 +4613,7 @@ ggplot(SERVICIOS_LAGOS , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Mont
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la Región de Los Lagos",
        x = "",
        y = "Inversión (miles de pesos)",
-       caption = "Figura 59: Inversión 2026 para los servicios asociados al MOP para la región de Los Lagos. Fuente: Elaboración propia a \npartir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DAP, DGA, DOH y Cultura") +
+       caption = "Figura 59: Inversión 2026 para los servicios asociados al MOP para la región de Los Lagos. Fuente: Elaboración propia a \npartir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' comprende los servicios DAP, \nDGA, DOH y DA") +
     scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_LAGOS$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
   theme_minimal()+
@@ -4027,7 +4632,7 @@ otros_data_LAGOS <- BASE %>%
   group_by(Servicio) %>%
   summarise(Monto = sum(`Monto 2026`, na.rm = TRUE)) %>%
   mutate(Porcentaje = Monto / sum(Monto) * 100) %>% 
-  filter(Servicio %in%  c("DAP", "DGA", "DOH", "Cultura")) %>%
+  filter(Servicio %in%  c("DAP", "DGA", "DOH", "DA")) %>%
   mutate(
     Monto = scales::comma(Monto, big.mark = ".", decimal.mark = ","),
     Porcentaje = scales::comma(round(Porcentaje,3), big.mark = ".", decimal.mark = ",")
@@ -4038,7 +4643,7 @@ otros_data_LAGOS <- BASE %>%
 kable(otros_data_LAGOS, "html", col.names = c("Servicio", "Inversión 2026", "Porcentaje (%)")) %>%
   kable_styling(full_width = FALSE, 
                 bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 42: Servicios agrupados en ‘Otros’, los cuáles incluyen DAP, DGA, DOH y Cultura para la región de Los Lagos. Fuente: Tabla construída a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape=FALSE)
+  footnote(general = "<span style='font-size: 12px;'>Tabla 42: Servicios agrupados en ‘Otros’, los cuáles incluyen DAP, DGA, DOH y DA para la región de Los Lagos. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape=FALSE)
 
 
 ```
@@ -4118,23 +4723,19 @@ theme(
 ```{r}
 
 tab_poblacion_LosLagos <- PROYECCIONES_POBmulti %>%
-  filter(RegionAB == "LOS LAGOS") %>%
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+  filter(RegionAB == "LOS LAGOS") %>%  
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),
-    "Población 2025" = first(`Suma de Poblacion 2025`),
-"Crec/Decrec relativo de Población 2024 al 2025" = format(
-  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 2), 
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
+  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
   nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -4169,7 +4770,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
     Comunas == "RIO NEGRO" ~ "RÍO NEGRO",
     TRUE ~ Comunas)) %>%
   
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
  
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%footnote(general = "<span style='font-size: 12px;'>Tabla 43: Poblaciones e Inversiones 2025 en la región de Los Lagos. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
@@ -4214,7 +4815,7 @@ ggplot(CC_NA_OTROS_LAGOS, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
     title = "Distribución porcentual de Inversión 2026 por categoría de Cambio Climático \npara la región de Los Lagos",
     caption = "Figura 61: Inversión 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Los Lagos. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'. "
 ,
-    fill = "Categoría"
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -4263,6 +4864,55 @@ CC_LAGOS %>%
 ```
 
 
+```{r, fig.cap = NULL}
+
+
+SH_LAGOS <- BASE %>%
+  filter(RegionAB == "LOS LAGOS") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_LAGOS, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)")
+    ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de Los Lagos",
+    x = NULL,
+    y = "",
+    caption = "Figura 62: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región de Los Lagos. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas de riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_LAGOS$porcentaje) + 5)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+
+
+```
+
+
 ## Aysén del General Carlos Ibáñez del Campo
 
 
@@ -4271,7 +4921,7 @@ SERVICIOS_AYSEN <- BASE %>%
   filter(RegionAB == "AYSÉN") %>%
   mutate(
     ServicioAgrupado = case_when(
-      Servicio %in% c("DOH","DP", "Cultura") ~ "OTROS",
+      Servicio %in% c("DOH","DP", "DA") ~ "OTROS",
       TRUE ~ Servicio
     )
   ) %>%
@@ -4289,7 +4939,7 @@ ggplot(SERVICIOS_AYSEN , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Mont
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la región de Aysén \n del General Carlos Ibáñez del Campo",
        x = "",
        y = "Inversión (miles de pesos)",
-       caption = "Figura 63: Inversión 2026 para los servicios asociados al MOP para la región de Aysén del General Carlos Ibáñez del \nCampo. Fuente: Elaboración propia a partir de los datos del  Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' comprende los servicios DP, DOH y Cultura."
+       caption = "Figura 63: Inversión 2026 para los servicios asociados al MOP para la región de Aysén del General Carlos Ibáñez del \nCampo. Fuente: Elaboración propia a partir de los datos del  Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' comprende los servicios DP, DOH y DA."
 ) +
     scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_AYSEN$Monto2026) * 1.1), labels = label_number(scale = 1e-6, suffix = "M")) +
@@ -4309,7 +4959,7 @@ otros_data_AYSEN <- BASE %>%
   group_by(Servicio) %>%
   summarise(Monto = sum(`Monto 2026`, na.rm = TRUE)) %>%
   mutate(Porcentaje = Monto / sum(Monto) * 100) %>% 
-  filter(Servicio %in% c("DP","DOH", "Cultura")) %>%
+  filter(Servicio %in% c("DP","DOH", "DA")) %>%
   mutate(
     Monto = scales::comma(Monto, big.mark = ".", decimal.mark = ","),
     Porcentaje = scales::comma(round(Porcentaje, 3), big.mark = ".", decimal.mark = ",")
@@ -4320,13 +4970,10 @@ otros_data_AYSEN <- BASE %>%
 kable(otros_data_AYSEN, "html", col.names = c("Servicio", "Inversión 2026", "Porcentaje (%)")) %>%
   kable_styling(full_width = FALSE, 
                 bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 45: Servicios agrupados en ‘Otros’, los cuáles incluyen DP, DOH y Cultura para la región de Aysén del General Carlos Ibáñez del Campo. Fuente: Tabla construída a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
+  footnote(general = "<span style='font-size: 12px;'>Tabla 45: Servicios agrupados en ‘Otros’, los cuáles incluyen DP, DOH y DA para la región de Aysén del General Carlos Ibáñez del Campo. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape = FALSE)
 
 
 ```
-
-
-
 
 
 
@@ -4396,32 +5043,26 @@ theme(
   )
 
 
-
-
 ```
+
 
 ```{r}
 
 
-tab_poblacion_Aysen <- PROYECCIONES_POBmulti %>%
-  filter(RegionAB == "AYSÉN") %>%
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+tab_poblacion_Aysen<- PROYECCIONES_POBmulti %>%
+  filter(RegionAB == "AYSÉN") %>%  
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),
-    "Población 2025" = first(`Suma de Poblacion 2025`),
-    "Crec/Decrec relativo de Población 2024 al 2025" = format(
-  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 2), 
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
+  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
   nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-)
-  )
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -4444,7 +5085,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
                     Comunas == "RIO IBAÑEZ" ~ "RÍO IBAÑEZ",
                     TRUE ~ Comunas)) %>% 
   
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 46: Poblaciones e Inversiones 2025 en la región de Aysén del General Carlos Ibáñez del Campo. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
          escape = FALSE)
@@ -4486,7 +5127,7 @@ ggplot(CC_NA_OTROS_AYSEN, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
   labs(
     title = "Distribución porcentual de inversiones 2026 por categoría de Cambio Climático\n para la región de Aysén del General Carlos Ibáñez del Campo.",
       caption = "Figura 65: Inversión 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Aysén del \nGeneral Carlos Ibáñez del Campo.\nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría \n'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación' 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -4531,6 +5172,52 @@ CC_AYSEN %>%
 ```
 
 
+```{r, fig.cap = NULL}
+
+
+SH_AYSEN <- BASE %>%
+  filter(RegionAB == "AYSÉN") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_AYSEN, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)") ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de Aysén del General Carlos Ibáñez del Campo",
+    x = NULL,
+    y = "",
+    caption = "Figura 66: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región de Aysén del General Carlos Ibáñez del Campo. Fuente: Elaboración propia a partir de datos del \nDepartamento de Gestión Presupuestaria. Nota: La categorización del programa Dipres fue realizada en cuatro clases. \nLa primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: \nampliación y mejoramiento de servicios existentes de agua potable rural, conservación y construcción de sistema SSR. \nLa segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_AYSEN$porcentaje) + 5)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+```
+
+
 ## Magallanes y de la Antártica Chilena
 
 
@@ -4557,7 +5244,7 @@ ggplot(SERVICIOS_MAG , aes(x = reorder(ServicioAgrupado, -Monto2026), y = Monto2
   labs(title = "Distribución de Inversión 2026 por servicios MOP para la región de Magallanes \n y de la Antártica Chilena",
        x = "",
        y = "Inversión (miles de pesos)",
-       caption = "Figura 67: Inversión 2026 para los servicios asociados al MOP para la región de Magallanes y de la Antártica Chilena. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \ncomprende los servicios \nDA, DGA."
+       caption = "Figura 67: Inversión 2026 para los servicios asociados al MOP para la región de Magallanes y de la Antártica Chilena. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' \ncomprende los servicios DA y DGA."
 ) +
     scale_fill_manual(values = colores_servicios) +
   scale_y_continuous(limits = c(0, max(SERVICIOS_MAG$Monto2026) * 1.3), labels = label_number(scale = 1e-6, suffix = "M")) +
@@ -4578,7 +5265,7 @@ otros_data_MAG <- BASE %>%
   group_by(Servicio) %>%
   summarise(Monto = sum(`Monto 2026`, na.rm = TRUE)) %>%
   mutate(Porcentaje = Monto / sum(Monto) * 100) %>% 
-  filter(Servicio %in% c("DA", "DGA","DGC","DOH")) %>%
+  filter(Servicio %in% c("DA", "DGA")) %>%
   mutate(
     Monto = scales::comma(Monto, big.mark = ".", decimal.mark = ","),
     Porcentaje = scales::comma(round(Porcentaje, 3), big.mark = ".", decimal.mark = ",")
@@ -4589,7 +5276,7 @@ otros_data_MAG <- BASE %>%
 kable(otros_data_MAG, "html", col.names = c("Servicio", "Inversión 2026", "Porcentaje (%)")) %>%
   kable_styling(full_width = FALSE, 
                 bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% 
-  footnote(general = "<span style='font-size: 12px;'>Tabla 48: Servicios agrupados en ‘Otros’, los cuáles incluyen DA, DGA, DGC y DOH para la región de Magallanes y de la Antártica Chilena. Fuente: Tabla construída a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape=FALSE)
+  footnote(general = "<span style='font-size: 12px;'>Tabla 48: Servicios agrupados en ‘Otros’, los cuáles incluyen DA, DGA, DGC y DOH para la región de Magallanes y de la Antártica Chilena. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria.</span>", general_title = "", escape=FALSE)
 
 
 ```
@@ -4611,11 +5298,11 @@ tab_eje_ministerial_cat_MAG <- BASE %>%
 
 ggplot(tab_eje_ministerial_cat_MAG, aes(x = `Eje Ministerial`, y = Monto2026, fill = `Eje Ministerial`)) +
   facet_wrap(~ Categoría, labeller = as_labeller(c("Arrastre" = "Proyectos de Arrastre", "Nuevo" = "Proyectos Nuevos"))) +
-  labs(title = "Asignación de la Inversión 2026 según clasificación del proyecto (Arrastre y Nuevo) y Eje Ministerial \npara la región de Magallanes y de la Antártica Chilena",    
+  labs(title = "Asignación de la Inversión 2026 según clasificación del proyecto (Arrastre y Nuevo) y \nEje Ministerial para la región de Magallanes y de la Antártica Chilena",    
     x = "", 
     y = "Inversión (miles de pesos)", 
     fill = "",
-    caption = "Figura 68: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales para la región de \nMagallanes y de la Antártica Chilena. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión\n Presupuestaria."
+    caption = "Figura 68: Inversión 2026 por categoría de proyecto (nuevo y arrastre) y por los cuatro ejes ministeriales para la región de \nMagallanes y de la Antártica Chilena. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión \nPresupuestaria."
 
   ) + 
   geom_bar(stat = "identity", width = 0.6) + 
@@ -4660,31 +5347,25 @@ theme(
     expand = expansion(mult = c(0, 0.3))
   )
 
-
 ```
+
 
 ```{r}
 
-
-
-tab_poblacion_Magallanes <- PROYECCIONES_POBmulti %>%
-  filter(RegionAB == "MAGALLANES") %>%
-  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Número de personas en situación de pobreza multidimensional (**)`) %>%
+tab_poblacion_Magallanes<- PROYECCIONES_POBmulti %>%
+  filter(RegionAB == "MAGALLANES") %>%  
+  select(Comunas, `Población censada`, `Suma de Poblacion 2025`, `Porcentaje de personas en situación de pobreza multidimensional 2022`) %>%
   group_by(Comunas) %>%
-  summarise(
-    "Población 2024" = first(`Población censada`),
-    "Población 2025" = first(`Suma de Poblacion 2025`),
-    "Crec/Decrec relativo de Población 2024 al 2025" = format(
-  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 2), 
+summarise(
+    "Población 2024" = sum(`Población censada`), 
+    "Población 2025" = sum(`Suma de Poblacion 2025`), 
+  "Crec/Decrec relativo de Población 2024 al 2025" = format(
+  round((first(`Suma de Poblacion 2025`) - first(`Población censada`)) / first(`Población censada`) * 100, 1), 
   big.mark = ".", 
   decimal.mark = ",", 
   nsmall = 2
 ),
-
-    "Pobreza Multidimensional" = scales::comma(
-  round(first(`Número de personas en situación de pobreza multidimensional (**)`)), 
-  big.mark = "."
-))
+    "Pobreza Multidimensional" = format(round(mean(`Porcentaje de personas en situación de pobreza multidimensional 2022`)*100,1), decimal.mark = ","))
 
 
 
@@ -4709,7 +5390,7 @@ mutate(`Población 2024` = scales::comma(`Población 2024`, big.mark = ".", deci
                                   Comunas == "RIO VERDE" ~ "RÍO VERDE",
                                   TRUE ~ Comunas)) %>% 
   
-  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "N° de personas en situación de pobreza multidimensional (**)", "Inversión")) %>%
+  kable("html", col.names = c("Comuna", "Población 2024", "Población 2025 (*)", "Crec/Decrec relativo (%) de Población 2024 al 2025", "% Pobreza Multidimensional", "Inversión")) %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "<span style='font-size: 12px;'>Tabla 49: Poblaciones e Inversiones 2025 en la región de Magallanes y de la Antártica Chilena. Fuente: Elaboración propia basada en datos del INE, del Departamento de Gestión Presupuestaria y CASEN 2022. (*) Población proyectada al 2025 según el INE. (**) Indica la cantidad de personas en situación de pobreza multidimensional para el año 2022. Nota: Los valores 'Por definir' en la columna Inversión corresponden a comunas que forman parte de proyectos intercomunales pero que no tienen un monto asociado.</span>", 
          general_title = "", 
          escape = FALSE)
@@ -4751,9 +5432,9 @@ ggplot(CC_NA_OTROS_MAG, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
     labels = CC_NA_OTROS_MAG$leyenda_texto
   ) +
   labs(
-    title = "Distribución porcentual de inversiones 2026 por categoría de Cambio Climático \n para la región de Magallanes y de la Antártica Chilena",
-    caption = "Figura 69: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Magallanes y de la \nAntártica Chilena. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \nNota: La categoría 'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' \ny 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    title = "Distribución porcentual de inversiones 2026 por categoría de Cambio \nClimático para la región de Magallanes y de la Antártica Chilena",
+    caption = "Figura 69: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para la región de Magallanes y de la \nAntártica Chilena. Fuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \nNota: La categoría 'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y \n'Mixto, mitigación y adaptación'. ",
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -4796,6 +5477,52 @@ CC_MAG %>%
 
 ```
 
+
+```{r, fig.cap = NULL}
+
+
+SH_MAG <- BASE %>%
+  filter(RegionAB == "MAGALLANES") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_MAG, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)")
+    ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Asignación de la Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para la \nregión de Magallanes y de la Antártica Chilena",
+    x = NULL,
+    y = "",
+    caption = "Figura 70: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara la región de Magallanes y de la Antártica Chilena. Fuente: Elaboración propia a partir de datos del Departamento \nde Gestión Presupuestaria. Nota: La categorización del programa Dipres fue realizada en cuatro clases. \nLa primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación \ny mejoramiento de servicios existentes de agua potable rural, conservación y construcción de sistema SSR. \nLa segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas riego. La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en Alta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_MAG$porcentaje) + 5))+
+   scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
+
+```
 
 
 ## Proyectos Interregionales
@@ -4898,7 +5625,7 @@ ggplot(tab_eje_ministerial_cat_INTERREGIONAL, aes(x = `Eje Ministerial`, y = Mon
 
     ), 
     vjust = -0.5, 
-    size = 3.5, 
+    size = 3, 
     color = "black", 
     fontface = "bold",
     show.legend = FALSE
@@ -4923,10 +5650,10 @@ theme(
     legend.box = "horizontal", 
     legend.key.size = unit(0.4, "cm"),
     legend.box.spacing = unit(0.5, "cm"), 
-    plot.margin = margin(t = 10, r = 10, b = 10, l = 10),
+    plot.margin = margin(t = 10, r = 10, b = 20, l = 10),
     plot.title = element_text(size = 10, face = "bold", hjust = 0.5, margin = margin(b = 20)), 
     plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-45), color = "#555555")) +
-  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) + 
+  guides(fill = guide_legend(nrow = 3, byrow = TRUE)) + 
   scale_y_continuous(
     labels = label_number(scale = 1e-6, suffix = "M"),
     expand = expansion(mult = c(0, 0.3))
@@ -4967,9 +5694,9 @@ ggplot(CC_NA_OTROS_INTER, aes(x = "", y = Monto2026, fill = CambioClimaticoA)) +
     labels = CC_NA_OTROS_INTER$leyenda_texto
   ) +
   labs(
-    title = "Distribución porcentual de inversiones 2026 por categoría de Cambio Climático \npara Proyectos Interregionales",
-        caption = "Figura 73: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para los Proyectos Interregionales. Fuente: Elaboración propia a partir \n de los datos del Departamento de Gestión Presupuestaria. Nota: La categoría 'Otros' incluye a aquellos proyectos \npertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y adaptación'. ",
-    fill = "Categoría"
+    title = "Distribución porcentual de inversiones 2026 por categoría de Cambio \nClimático para Proyectos Interregionales",
+        caption = "Figura 73: Inversiones 2026 según tipo de proyecto vinculado al Cambio Climático para los Proyectos Interregionales. \nFuente: Elaboración propia a partir de los datos del Departamento de Gestión Presupuestaria. \nNota: La categoría 'Otros' incluye a aquellos proyectos pertenecientes a 'Adaptación', 'Mitigación' y 'Mixto, mitigación y \nadaptación'. ",
+    fill = "Categoría - miles$"
   ) +
   theme_minimal() +
   theme(
@@ -5008,6 +5735,53 @@ CC_INTER %>%
     font_size = 14
   )%>% 
   footnote(general = "<span style='font-size: 12px;'>Tabla 52: Desglose de la categoría 'Otros' de los proyectos relacionados a Cambio Climático para los Proyectos Interregionales. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria</span>", escape = FALSE, general_title = "")
+
+```
+
+
+```{r, fig.cap = NULL}
+
+
+SH_INTER <- BASE %>%
+  filter(RegionAB == "INTERREGIONAL") %>% 
+  filter(`Eje Ministerial` == "Seguridad hídrica" & Categoría == "Nuevo") %>%
+  group_by(AGUA_DIPRES) %>%
+  summarise(monto2026 = sum(`Monto 2026`, na.rm = TRUE)) %>%
+  mutate(
+    porcentaje = round((monto2026 / sum(monto2026)) * 100,2)
+  )
+
+ggplot(SH_INTER, aes(x = reorder(AGUA_DIPRES, porcentaje), y = porcentaje)) +
+  geom_segment(aes(xend = AGUA_DIPRES, y = 0, yend = porcentaje), color = "gray") + 
+  geom_point(aes(size = porcentaje), color = "skyblue", fill = "white", shape = 21, stroke = 3) + 
+  geom_text(
+    aes(
+      label = paste0(scales::comma(monto2026, big.mark = ".", decimal.mark = ","), 
+               "\n(", format(porcentaje, nsmall = 1, decimal.mark = ","), "%)")
+    ),
+    fontface = "bold",
+    vjust = 1.6,
+    size = 3.5
+  ) +
+  coord_flip() + 
+  labs(
+    title = "Inversión 2026 en Nuevos Proyectos del Eje de Seguridad Hídrica para los \nProyectos Interregionales",
+    x = NULL,
+    y = "",
+    caption = "Figura 74: Inversión 2026 en proyectos categorizados como nuevos pertenencientes al Eje Ministerial de Seguridad Hídrica \npara Proyectos Interregionales. Fuente: Elaboración propia a partir de datos del Departamento de Gestión Presupuestaria. \nNota: La categorización del programa Dipres fue realizada en cuatro clases. La primera es 'Consumo Humano' que está \ncompuesta por los programas pertenecientes a: ampliación y mejoramiento de servicios existentes de agua potable rural, \nconservación y construcción de sistema SSR. La segunda es 'Riego' que agrupa: grandes obras de riego, conservación de obras de riego \ny obras medianas de riego.La categoría 'Estudios y Otros' reune los estudios, ampliación de la red hidrométrica nacional en \nAlta Montaña y las que no tengan identificado su programa Dipres (NA)."
+  ) +
+  theme_minimal() +
+  theme(
+panel.grid.major.y = element_blank(),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    axis.text.y = element_text(size = 8),
+  plot.title = element_text(size = 10, hjust = 0.5, face = "bold", margin = margin(b = 20,r=100)),
+   plot.caption = element_text(hjust = 0, size = 9, margin = margin(t = 10, r = 100, b = 5, l=-85), color = "#555555")
+  ) +
+  expand_limits(y = c(0, max(SH_INTER$porcentaje) + 5))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1, decimal.mark = ","))
 
 ```
 
